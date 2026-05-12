@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>QQ AI辅助聊天 - 交互Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif; background: #ededed; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; }
+:root { --primary: #0099FF; --primary-light: #e6f4ff; --bg: #f5f5f5; --white: #ffffff; --text: #1a1a1a; --text-secondary: #666; --text-hint: #999; --border: #e8e8e8; }
+.phone-frame { width: 375px; height: 812px; background: var(--bg); position: relative; overflow: hidden; border-radius: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+.status-bar { height: 54px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 24px 8px; background: var(--white); flex-shrink: 0; }
+.status-bar .time { font-size: 15px; font-weight: 600; }
+.status-bar .right { display: flex; gap: 6px; align-items: center; }
+.status-bar .right svg { width: 16px; height: 16px; }
+.nav-bar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: var(--white); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+.nav-bar .left { display: flex; align-items: center; gap: 6px; }
+.nav-bar .back-arrow { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.nav-bar .title-section { display: flex; flex-direction: column; }
+.nav-bar .name { font-size: 16px; font-weight: 500; }
+.nav-bar .subtitle { font-size: 11px; color: #52c41a; display: flex; align-items: center; gap: 3px; }
+.nav-bar .subtitle::before { content:''; width: 6px; height: 6px; border-radius: 50%; background: #52c41a; }
+.nav-bar .right-icons { display: flex; gap: 16px; align-items: center; }
+.nav-bar .right-icons svg { width: 22px; height: 22px; color: var(--text); }
+.chat-area { flex: 1; padding: 12px; overflow-y: auto; background: var(--bg); }
+.msg-row { display: flex; align-items: flex-start; margin-bottom: 14px; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.msg-row.sent { justify-content: flex-end; }
+.msg-row.received { justify-content: flex-start; }
+.avatar { width: 36px; height: 36px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.msg-row.sent .avatar { margin-left: 8px; order: 2; }
+.msg-row.received .avatar { margin-right: 8px; }
+.bubble { padding: 9px 13px; border-radius: 6px; max-width: 65%; font-size: 15px; line-height: 1.45; word-break: break-all; }
+.msg-row.received .bubble { background: var(--white); color: var(--text); }
+.msg-row.sent .bubble { background: var(--primary); color: var(--white); }
+.bottom-section { flex-shrink: 0; background: var(--bg); display: flex; flex-direction: column; }
+
+/* AI Bar - new layout */
+.ai-bar { padding: 10px 14px 6px; background: var(--bg); border-top: 0.5px solid var(--border); }
+.ai-bar-row1 { display: flex; align-items: center; gap: 8px; }
+.ai-bar-row2 { display: flex; justify-content: flex-end; padding-top: 4px; }
+.ai-bar .tone-tag { flex-shrink: 0; font-size: 11px; color: var(--text-hint); padding: 2px 6px; border-radius: 3px; background: #f0f0f0; }
+.ai-bar .suggestion-text { flex: 1; font-size: 14px; color: var(--text); line-height: 1.5; }
+.ai-bar .use-btn { font-size: 14px; color: var(--primary); font-weight: 500; cursor: pointer; flex-shrink: 0; }
+.ai-bar .use-btn:active { opacity: 0.6; }
+.ai-bar .more-btn { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 3px 10px; border-radius: 4px; border: 0.5px solid #d9d9d9; background: var(--white); }
+.ai-bar .more-btn:active { background: #f0f0f0; }
+.ai-new { color: var(--primary); }
+
+/* Quick reply chips in ai-bar area */
+.ai-bar-chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px; background: var(--bg); border-top: 0.5px solid var(--border); }
+.ai-bar-chips::-webkit-scrollbar { display: none; }
+.ai-bar-chips .quick-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 16px; font-size: 13px; background: var(--white); color: var(--text); border: 0.5px solid #e0e0e0; cursor: pointer; transition: all 0.15s; }
+.ai-bar-chips .quick-chip:active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+/* Empty ai bar (after use / reply mode) */
+.ai-bar-empty { padding: 8px 14px; background: var(--bg); border-top: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.ai-bar-empty .tone-tag { font-size: 11px; color: var(--text-hint); padding: 2px 6px; border-radius: 3px; background: #f0f0f0; }
+.ai-bar-empty .more-btn { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 3px 10px; border-radius: 4px; border: 0.5px solid #d9d9d9; background: var(--white); }
+
+/* Loading */
+.loading-dots { display: inline-flex; gap: 4px; align-items: center; height: 20px; }
+.loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: #ccc; animation: dotPulse 1.2s infinite; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotPulse { 0%,60%,100%{opacity:0.3;transform:scale(0.8)} 30%{opacity:1;transform:scale(1.1)} }
+
+.input-area { padding: 6px 12px; }
+.input-box { display: flex; align-items: center; background: var(--white); border-radius: 6px; padding: 9px 12px; min-height: 36px; border: 0.5px solid #e0e0e0; }
+.input-box .text { flex: 1; font-size: 15px; color: var(--text); line-height: 1.4; }
+.cursor-blink { display: inline-block; width: 2px; height: 17px; background: var(--primary); vertical-align: middle; animation: blink 1s infinite; }
+@keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:0} }
+.toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px 6px; }
+.toolbar .tb-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.toolbar .tb-icon svg { width: 26px; height: 26px; color: #333; }
+.keyboard { background: #d1d5db; padding: 6px 3px 2px; flex-shrink: 0; }
+.keyboard .suggestions { display: flex; gap: 12px; padding: 6px 12px; background: #eee; margin: 0 4px 6px; border-radius: 5px; overflow: hidden; }
+.keyboard .suggestions span { font-size: 15px; color: var(--text); cursor: pointer; }
+.keyboard .row { display: flex; justify-content: center; gap: 5px; margin-bottom: 8px; padding: 0 2px; }
+.keyboard .key { flex: 1; max-width: 34px; height: 42px; background: var(--white); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.12); cursor: pointer; }
+.keyboard .key:active { background: #e0e0e0; transform: scale(0.95); }
+.keyboard .key.wide { max-width: 44px; background: #adb5bd; font-size: 16px; }
+.keyboard .key.space { flex: 3; max-width: none; font-size: 14px; }
+.keyboard .key.send { flex: 1.5; max-width: 70px; background: var(--primary); color: var(--white); font-size: 15px; font-weight: 500; }
+.keyboard .key.special { max-width: 50px; font-size: 14px; background: #adb5bd; }
+
+/* AI Panel */
+.ai-panel { flex-shrink: 0; background: #fafafa; border-top: 0.5px solid var(--border); max-height: 420px; overflow-y: auto; display: none; }
+.ai-panel.visible { display: block; }
+.ai-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; position: sticky; top: 0; background: #fafafa; z-index: 2; }
+.ai-panel-title { font-size: 16px; font-weight: 500; }
+.ai-panel-actions { display: flex; align-items: center; gap: 10px; }
+.tone-pill { display: flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 16px; background: var(--white); border: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+.tone-pill.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 500; }
+.settings-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; }
+.settings-icon:active { background: #eee; }
+.ai-panel-original { padding: 8px 16px 12px; font-size: 13px; }
+.original-label { color: var(--text-hint); font-size: 12px; }
+.original-text { color: var(--text); }
+.ai-panel-section { padding: 0 16px 14px; }
+.section-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.suggestion-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--white); border-radius: 10px; margin-bottom: 8px; border: 0.5px solid #f0f0f0; cursor: pointer; }
+.suggestion-card:active { background: var(--primary-light); }
+.card-text { flex: 1; font-size: 14px; color: var(--text); line-height: 1.4; margin-right: 10px; }
+.card-use-btn { flex-shrink: 0; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--primary); color: var(--primary); font-size: 12px; font-weight: 500; cursor: pointer; background: var(--white); }
+.tone-selector { margin: 0 12px 14px; background: var(--white); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; display: none; }
+.tone-selector.visible { display: block; }
+.tone-selector-title { padding: 12px 14px 8px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.tone-options { padding: 0 6px; }
+.tone-option { display: flex; align-items: center; justify-content: space-between; padding: 11px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px; }
+.tone-option:active { background: #f0f0f0; }
+.tone-option.active { background: var(--primary-light); }
+.tone-opt-left { display: flex; align-items: center; gap: 10px; }
+.tone-opt-emoji { font-size: 20px; }
+.tone-opt-info { display: flex; flex-direction: column; }
+.tone-opt-name { font-size: 14px; font-weight: 500; }
+.tone-opt-desc { font-size: 11px; color: var(--text-hint); margin-top: 1px; }
+.tone-selector-footer { padding: 10px 14px; border-top: 0.5px solid var(--border); }
+.tone-footer-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.tone-footer-label { font-size: 12px; color: var(--text-secondary); }
+.mini-toggle { width: 36px; height: 20px; border-radius: 10px; position: relative; cursor: pointer; }
+.mini-toggle.on { background: var(--primary); }
+.mini-toggle.off { background: #ccc; }
+.mini-toggle::after { content:''; width: 16px; height: 16px; border-radius: 50%; background: var(--white); position: absolute; top: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.mini-toggle.on::after { left: 18px; }
+.mini-toggle.off::after { left: 2px; }
+
+/* Settings */
+.settings-page { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #f5f5f5; z-index: 200; display: none; flex-direction: column; border-radius: 40px; overflow: hidden; }
+.settings-page.visible { display: flex; }
+.settings-nav { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
+.settings-nav-left { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.settings-nav-title { font-size: 17px; font-weight: 500; }
+.settings-content { flex: 1; overflow-y: auto; padding: 0 0 30px; }
+.settings-group { background: var(--white); border-radius: 12px; margin: 10px 12px 0; overflow: hidden; }
+.settings-group-title { padding: 12px 16px 4px; font-size: 12px; font-weight: 500; color: var(--text-hint); }
+.settings-item { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 0.5px solid #f5f5f5; }
+.settings-item:last-child { border-bottom: none; }
+.settings-item-left { flex: 1; min-width: 0; }
+.settings-item-title { font-size: 14px; color: var(--text); }
+.settings-item-desc { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+.settings-item-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 12px; }
+.settings-value { font-size: 13px; color: var(--text-hint); }
+.toggle { width: 44px; height: 26px; border-radius: 13px; position: relative; flex-shrink: 0; cursor: pointer; }
+.toggle::after { content:''; width: 22px; height: 22px; border-radius: 50%; background: var(--white); position: absolute; top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.toggle.on { background: var(--primary); }
+.toggle.on::after { left: 20px; }
+.toggle.off { background: #ddd; }
+.toggle.off::after { left: 2px; }
+.settings-footer { margin: 16px 16px 0; font-size: 11px; color: var(--text-hint); line-height: 1.6; }
+
+.scenario-nav { position: fixed; top: 16px; left: 16px; display: flex; flex-direction: column; gap: 4px; z-index: 300; }
+.scenario-nav button { padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; background: var(--white); font-size: 11px; cursor: pointer; text-align: left; white-space: nowrap; }
+.scenario-nav button:hover { background: var(--primary-light); border-color: var(--primary); }
+.scenario-nav button.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+</style>
+</head>
+<body>
+<div class="scenario-nav">
+  <button class="active" data-scene="polish">智能润色</button>
+  <button data-scene="continue">智能续写</button>
+  <button data-scene="reply">回复建议</button>
+  <button data-scene="rewrite">语气改写</button>
+  <button data-scene="more">更多面板</button>
+  <button data-scene="tone">语气切换</button>
+  <button data-scene="settings">设置页</button>
+</div>
+<div class="phone-frame">
+  <div class="status-bar"><span class="time">09:41</span><div class="right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="4" y="9" width="10" height="7" rx="1"/><path d="M22 10v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div></div>
+  <div class="nav-bar"><div class="left"><div class="back-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></div><div class="title-section"><span class="name" id="chatName">小王</span><span class="subtitle">在线</span></div></div><div class="right-icons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div></div>
+  <div class="chat-area" id="chatArea"></div>
+  <div class="bottom-section" id="bottomSection">
+    <div id="aiBarZone"></div>
+    <div class="input-area"><div class="input-box"><span class="text" id="inputText"></span></div></div>
+    <div class="toolbar"><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 28c3.3 0 6-2.7 6-6V10c0-3.3-2.7-6-6-6s-6 2.7-6 6v12c0 3.3 2.7 6 6 6z"/><path d="M36 20v2c0 6.6-5.4 12-12 12s-12-5.4-12-12v-2"/><path d="M24 34v8M18 42h12"/></svg></div><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="10" width="36" height="28" rx="3"/><circle cx="17" cy="21" r="3"/><path d="M6 34l10-10 6 6 10-10 10 10v4a3 3 0 01-3 3H9a3 3 0 01-3-3v-3z"/></svg></div><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M36 10H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V14a4 4 0 00-4-4z"/><circle cx="24" cy="24" r="7"/><circle cx="35" cy="15" r="2" fill="#333"/></svg></div><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="10" width="36" height="28" rx="4"/><path d="M6 18h36"/><circle cx="24" cy="30" r="4"/></svg></div><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="18"/><path d="M16 30c2 3 5 5 8 5s6-2 8-5"/><circle cx="17" cy="20" r="2" fill="#333" stroke="none"/><circle cx="31" cy="20" r="2" fill="#333" stroke="none"/></svg></div><div class="tb-icon"><svg viewBox="0 0 48 48" fill="none" stroke="#333" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="18"/><path d="M24 14v20M14 24h20"/></svg></div></div>
+    <div class="keyboard" id="keyboard"><div class="suggestions" id="kbSuggestions"></div><div class="row"><span class="key">Q</span><span class="key">W</span><span class="key">E</span><span class="key">R</span><span class="key">T</span><span class="key">Y</span><span class="key">U</span><span class="key">I</span><span class="key">O</span><span class="key">P</span></div><div class="row"><span class="key">A</span><span class="key">S</span><span class="key">D</span><span class="key">F</span><span class="key">G</span><span class="key">H</span><span class="key">J</span><span class="key">K</span><span class="key">L</span></div><div class="row"><span class="key wide">⇧</span><span class="key">Z</span><span class="key">X</span><span class="key">C</span><span class="key">V</span><span class="key">B</span><span class="key">N</span><span class="key">M</span><span class="key wide">⌫</span></div><div class="row"><span class="key special">123</span><span class="key space">space</span><span class="key send" id="sendBtn">发送</span></div></div>
+  </div>
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header"><div class="ai-panel-title">AI辅助</div><div class="ai-panel-actions"><div class="tone-pill" id="panelTonePill"><span id="panelToneEmoji">🤝</span><span id="panelToneText">谨慎正式</span></div><div class="settings-icon" id="openSettings"><svg viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div></div></div>
+    <div class="tone-selector" id="toneSelector"><div class="tone-selector-title">选择语气风格</div><div class="tone-options" id="toneOptions"></div><div class="tone-selector-footer"><div class="tone-footer-row"><span class="tone-footer-label">为对方记住此风格</span><div class="mini-toggle on"></div></div><div class="tone-footer-row"><span class="tone-footer-label">智能推荐</span><div class="mini-toggle on"></div></div></div></div>
+    <div id="panelContent"></div>
+  </div>
+  <div class="settings-page" id="settingsPage">
+    <div class="status-bar" style="background:#f5f5f5;"><span class="time">09:41</span><div class="right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="4" y="9" width="10" height="7" rx="1"/><path d="M22 10v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div></div>
+    <div class="settings-nav"><div class="settings-nav-left" id="closeSettings"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><path d="M15 18l-6-6 6-6"/></svg></div><span class="settings-nav-title">AI辅助聊天</span><div style="width:20px;"></div></div>
+    <div class="settings-content"><div class="settings-group"><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">AI辅助聊天</div><div class="settings-item-desc">开启后在聊天中获得AI写作辅助</div></div><div class="toggle on"></div></div></div><div class="settings-group"><div class="settings-group-title">功能开关</div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">智能润色</div></div><div class="toggle on"></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">智能续写</div></div><div class="toggle on"></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">语气改写</div></div><div class="toggle on"></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">快捷回复建议</div></div><div class="toggle on"></div></div></div><div class="settings-group"><div class="settings-group-title">隐私与数据</div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">消息参考范围</div><div class="settings-item-desc">AI参考消息的范围，用于生成建议</div></div><div class="settings-item-right"><span class="settings-value">对方最新消息</span><svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><path d="M9 6l6 6-6 6"/></svg></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">用于改进AI模型</div><div class="settings-item-desc">允许匿名使用润色数据改进AI效果</div></div><div class="toggle off"></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title" style="color:#f5222d;">清除所有AI记忆数据</div></div><svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><path d="M9 6l6 6-6 6"/></svg></div></div><div class="settings-group"><div class="settings-group-title">风格偏好</div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">默认语气风格</div><div class="settings-item-desc">对未设置风格的好友使用此默认值</div></div><div class="settings-item-right"><span class="settings-value">礼貌友好型</span><svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><path d="M9 6l6 6-6 6"/></svg></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">好友风格管理</div><div class="settings-item-desc">查看和修改已记忆的好友语气风格</div></div><div class="settings-item-right"><span class="settings-value">已设置 12 位</span><svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><path d="M9 6l6 6-6 6"/></svg></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">自动学习风格偏好</div><div class="settings-item-desc">根据你的选择自动记住每位好友的风格</div></div><div class="toggle on"></div></div></div><div class="settings-group"><div class="settings-group-title">高级</div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">续写触发灵敏度</div><div class="settings-item-desc">调整AI续写出现的频率</div></div><div class="settings-item-right"><span class="settings-value">标准</span><svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><path d="M9 6l6 6-6 6"/></svg></div></div><div class="settings-item"><div class="settings-item-left"><div class="settings-item-title">群聊中启用</div><div class="settings-item-desc">在群聊对话中也展示AI辅助</div></div><div class="toggle off"></div></div></div><div class="settings-footer">AI辅助聊天使用端侧模型+云端模型协作处理，文本处理完成后即时删除，不会存储你的聊天内容。<span style="color:var(--primary);">了解更多</span></div></div>
+  </div>
+</div>
+<script>
+const tones=[{emoji:'✏️',name:'通用纠错',desc:'仅纠正错别字和语法'},{emoji:'🤝',name:'谨慎正式',desc:'适合长辈、上级、不熟的人'},{emoji:'😊',name:'礼貌友好',desc:'适合同事、普通朋友'},{emoji:'😄',name:'轻松幽默',desc:'适合好朋友、聊得来的同学'},{emoji:'🤪',name:'放飞自我',desc:'适合死党、沙雕群友'}];
+let currentTone=1, panelOpen=false, currentScene='polish';
+
+function getPanelContent(original){
+  return `<div class="ai-panel-original"><span class="original-label">你输入的：</span><span class="original-text">${original}</span></div>
+<div class="ai-panel-section"><div class="section-label">💬 换个说法</div>
+<div class="suggestion-card"><span class="card-text">${getRewrite(original,0)}</span><span class="card-use-btn">使用</span></div>
+<div class="suggestion-card"><span class="card-text">${getRewrite(original,1)}</span><span class="card-use-btn">使用</span></div>
+<div class="suggestion-card"><span class="card-text">${getRewrite(original,2)}</span><span class="card-use-btn">使用</span></div></div>
+<div class="ai-panel-section"><div class="section-label">✏️ 接着说</div>
+<div class="suggestion-card"><span class="card-text">${original}<span class="ai-new">，${getContinuation(original)}</span></span><span class="card-use-btn">使用</span></div></div>`;
+}
+function getRewrite(t,i){
+  const m={
+    '好的我订位6点半':['好的，我来订位，6点半的','收到！我这就去定位子，约6点半','OK我订一下，六点半见～'],
+    '好呀，不过周六下午':['好呀！不过周六下午我有点事','可以呀，但周六下午我可能走不开','行呀，周六下午可能有安排'],
+    '写完了明天发你':['老师您好，初稿已完成，明天发您审阅','写好了！明天一早发给您，辛苦老师审核','搞定啦，明天发您，有问题随时找我改']
+  };
+  return (m[t]||['改写1','改写2','改写3'])[i];
+}
+function getContinuation(t){
+  const m={'好的我订位6点半':'你们几个人来？我提前跟店家说','好呀，不过周六下午':'我可能有事，周日出发怎么样？','写完了明天发你':'如果有需要修改的地方请随时告诉我'};
+  return m[t]||'后续补充内容';
+}
+
+const scenes={
+  polish:{name:'小王',messages:[{type:'received',avatar:'🧑',bg:'#a5d6a7',text:'周五晚上要不要一起吃火锅？就上次那家'},{type:'sent',avatar:'😸',bg:'#ffcc80',text:'好啊好啊'},{type:'received',avatar:'🧑',bg:'#a5d6a7',text:'那你帮忙定个位吧，6点半左右'}],input:'好的我订位6点半',tag:'纠错',result:'好的，我<span class="ai-new">来</span>订位，6点半<span class="ai-new">的</span>',suggestions:['的','了','吧','好','到','那'],animated:true,delay:1200},
+  continue:{name:'小明',messages:[{type:'received',avatar:'🧑',bg:'#c5e1a5',text:'周末要不要一起去露营？上次那个营地挺好的，还能看到星星'}],input:'好呀，不过周六下午',tag:'续写',result:'好呀，不过周六下午<span class="ai-new">我可能有事，周日出发怎么样？需要我准备什么装备吗</span>',suggestions:['可能','有事','不行','要','去'],animated:true,delay:2000},
+  reply:{name:'项目组长',messages:[{type:'received',avatar:'👨‍💼',bg:'#90caf9',text:'明天下午3点评审会，记得把设计稿同步到文档里，顺便叫上前端的同学'}],input:'',tag:'纠错',quickReplies:['好的，收到！','收到，我现在就同步','好的，3点准时到'],suggestions:['好的','收到','明天','可以','没问题']},
+  rewrite:{name:'张老师',messages:[{type:'received',avatar:'👩‍🏫',bg:'#90caf9',text:'论文初稿写完了吗？下周一要交终稿了'}],input:'写完了明天发你',tag:'正式',result:'<span class="ai-new">老师您好，</span>写完了<span class="ai-new">，明天发您审阅！</span>',suggestions:['明天','就','能','给','可以','发']},
+  more:{name:'张老师',messages:[{type:'received',avatar:'👩‍🏫',bg:'#90caf9',text:'论文初稿写完了吗？下周一要交终稿了'}],input:'写完了明天发你',tag:'正式',result:'<span class="ai-new">老师您好，</span>写完了<span class="ai-new">，明天发您审阅！</span>',openPanel:true},
+  tone:{name:'张老师',messages:[{type:'received',avatar:'👩‍🏫',bg:'#90caf9',text:'论文初稿写完了吗？下周一要交终稿了'}],input:'写完了明天发你',tag:'正式',result:'<span class="ai-new">老师您好，</span>写完了<span class="ai-new">，明天发您审阅！</span>',openPanel:true,openTone:true},
+  settings:{showSettings:true}
+};
+
+function renderAiBar(tag, resultHtml, moreBtnText){
+  return `<div class="ai-bar"><div style="display:flex;align-items:center;gap:8px;width:100%"><span class="tone-tag">${tag}</span><div id="aiBarText" style="flex:1;font-size:14px;color:var(--text);line-height:1.6;overflow:hidden">${resultHtml}</div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px"><span class="use-btn" id="useBtn">使用</span><span class="more-btn" id="moreBtn">${moreBtnText}</span></div></div></div>`;
+}
+
+function renderAiBarCollapsed(tag, plainText, moreBtnText){
+  // Collapsed mode when panel is open: single line, text truncated, no 使用
+  return `<div class="ai-bar"><div style="display:flex;align-items:center;gap:8px;width:100%"><span class="tone-tag">${tag}</span><span style="flex:1;font-size:13px;color:var(--text-hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plainText}</span><span class="more-btn" id="moreBtn">${moreBtnText}</span></div></div>`;
+}
+
+function renderEmptyBar(tag, moreBtnText){
+  return `<div class="ai-bar-empty"><span class="tone-tag">${tag}</span><span class="more-btn" id="moreBtn">${moreBtnText}</span></div>`;
+}
+
+function renderChipsBar(chips){
+  return `<div class="ai-bar-chips">${chips.map(c=>`<span class="quick-chip">${c}</span>`).join('')}</div>`;
+}
+
+function loadScene(key){
+  currentScene=key;
+  const s=scenes[key];
+  document.getElementById('settingsPage').classList.toggle('visible',!!s.showSettings);
+  if(s.showSettings) return;
+  document.getElementById('chatName').textContent=s.name;
+  document.getElementById('chatArea').innerHTML=s.messages.map(m=>m.type==='received'?`<div class="msg-row received"><div class="avatar" style="background:${m.bg}">${m.avatar}</div><div class="bubble">${m.text}</div></div>`:`<div class="msg-row sent"><div class="bubble">${m.text}</div><div class="avatar" style="background:${m.bg}">${m.avatar}</div></div>`).join('');
+  document.getElementById('inputText').innerHTML=s.input?s.input+'<span class="cursor-blink"></span>':'<span style="color:#bbb">输入消息...</span>';
+  document.getElementById('kbSuggestions').innerHTML=(s.suggestions||[]).map(w=>`<span>${w}</span>`).join('');
+  
+  const zone=document.getElementById('aiBarZone');
+  const moreBtnText=s.openPanel?'收起':'更多';
+  
+  if(s.quickReplies){
+    zone.innerHTML=renderChipsBar(s.quickReplies);
+  } else if(s.openPanel && s.result){
+    // Panel open: collapsed bar
+    const plainText = s.result.replace(/<[^>]+>/g,'');
+    zone.innerHTML=renderAiBarCollapsed(s.tag, plainText, '收起');
+  } else if(s.animated){
+    zone.innerHTML=`<div class="ai-bar"><div style="display:flex;align-items:center;gap:8px;width:100%"><span class="tone-tag">${s.tag}</span><span style="flex:1;font-size:14px;color:var(--text)"><div class="loading-dots"><span></span><span></span><span></span></div></span></div></div>`;
+    setTimeout(()=>{ zone.innerHTML=renderAiBar(s.tag, s.result, moreBtnText); bindBarEvents(s); }, s.delay||1200);
+  } else if(s.result){
+    zone.innerHTML=renderAiBar(s.tag, s.result, moreBtnText);
+  } else {
+    zone.innerHTML=renderEmptyBar(s.tag, moreBtnText);
+  }
+  
+  panelOpen=!!s.openPanel;
+  document.getElementById('keyboard').style.display=panelOpen?'none':'block';
+  const panel=document.getElementById('aiPanel');
+  panel.classList.toggle('visible',panelOpen);
+  if(panelOpen){
+    document.getElementById('panelToneEmoji').textContent=tones[currentTone].emoji;
+    document.getElementById('panelToneText').textContent=tones[currentTone].name;
+    const toneSel=document.getElementById('toneSelector');
+    toneSel.classList.toggle('visible',!!s.openTone);
+    document.getElementById('panelTonePill').classList.toggle('active',!!s.openTone);
+    if(s.openTone){ renderToneOptions(); document.getElementById('panelContent').innerHTML=''; }
+    else { document.getElementById('panelContent').innerHTML=getPanelContent(s.input); }
+  } else {
+    document.getElementById('toneSelector').classList.remove('visible');
+    document.getElementById('panelContent').innerHTML='';
+  }
+  
+  if(!s.animated) bindBarEvents(s);
+}
+
+function bindBarEvents(s){
+  const useBtn=document.getElementById('useBtn');
+  const moreBtn=document.getElementById('moreBtn');
+  if(useBtn) useBtn.onclick=()=>{
+    const textEl=document.getElementById('aiBarText');
+    if(textEl){
+      document.getElementById('inputText').innerHTML=textEl.textContent.trim()+'<span class="cursor-blink"></span>';
+    }
+    const zone=document.getElementById('aiBarZone');
+    zone.innerHTML=renderEmptyBar(s.tag, panelOpen?'收起':'更多');
+    bindMoreBtn(s);
+  };
+  bindMoreBtn(s);
+}
+
+function bindMoreBtn(s){
+  const moreBtn=document.getElementById('moreBtn');
+  if(moreBtn) moreBtn.onclick=()=>togglePanel(s);
+}
+
+function togglePanel(s){
+  panelOpen=!panelOpen;
+  const zone=document.getElementById('aiBarZone');
+  document.getElementById('keyboard').style.display=panelOpen?'none':'block';
+  const panel=document.getElementById('aiPanel');
+  panel.classList.toggle('visible',panelOpen);
+  
+  // Switch bar between full and collapsed
+  if(panelOpen){
+    const plainText = (s.result||'').replace(/<[^>]+>/g,'') || s.input || '';
+    zone.innerHTML = renderAiBarCollapsed(s.tag||'纠错', plainText, '收起');
+    bindMoreBtn(s);
+    document.getElementById('panelToneEmoji').textContent=tones[currentTone].emoji;
+    document.getElementById('panelToneText').textContent=tones[currentTone].name;
+    document.getElementById('toneSelector').classList.remove('visible');
+    document.getElementById('panelTonePill').classList.remove('active');
+    const inputVal=s.input||document.getElementById('inputText').textContent.replace('输入消息...','').trim();
+    document.getElementById('panelContent').innerHTML=inputVal?getPanelContent(inputVal):'';
+  } else {
+    if(s.result){ zone.innerHTML=renderAiBar(s.tag, s.result, '更多'); }
+    else { zone.innerHTML=renderEmptyBar(s.tag||'纠错','更多'); }
+    bindBarEvents(s);
+    document.getElementById('panelContent').innerHTML=''; document.getElementById('toneSelector').classList.remove('visible');
+  }
+}
+
+function renderToneOptions(){
+  document.getElementById('toneOptions').innerHTML=tones.map((t,i)=>`<div class="tone-option ${i===currentTone?'active':''}" data-idx="${i}"><div class="tone-opt-left"><span class="tone-opt-emoji">${t.emoji}</span><div class="tone-opt-info"><span class="tone-opt-name">${t.name}</span><span class="tone-opt-desc">${t.desc}</span></div></div>${i===currentTone?'<svg viewBox="0 0 24 24" fill="var(--primary)" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>':''}</div>`).join('');
+  document.querySelectorAll('.tone-option').forEach(el=>{el.onclick=()=>{
+    currentTone=parseInt(el.dataset.idx);
+    renderToneOptions();
+    document.getElementById('panelToneEmoji').textContent=tones[currentTone].emoji;
+    document.getElementById('panelToneText').textContent=tones[currentTone].name;
+    document.getElementById('panelTonePill').classList.remove('active');
+    // Collapse tone selector
+    document.getElementById('toneSelector').classList.remove('visible');
+    // Update ai bar with new tone tag + new result
+    const s=scenes[currentScene];
+    const newTag=tones[currentTone].name.slice(0,2);
+    const newResult=getToneResult(s.input, currentTone);
+    const zone=document.getElementById('aiBarZone');
+    zone.innerHTML=renderAiBarCollapsed(newTag, newResult.replace(/<[^>]+>/g,''), '收起');
+    bindMoreBtn(s);
+    // Update panel content
+    document.getElementById('panelContent').innerHTML=getPanelContent(s.input);
+  };});
+}
+
+function getToneResult(input, toneIdx){
+  const results={
+    '好的我订位6点半':[
+      '好的，我<span class="ai-new">来</span>订位，6点半<span class="ai-new">的</span>',
+      '<span class="ai-new">好的，</span>我来订位<span class="ai-new">，约6点半，届时见</span>',
+      '<span class="ai-new">收到～</span>我来订位，6点半<span class="ai-new">见！</span>',
+      '<span class="ai-new">OK！</span>我订位，6点半<span class="ai-new">冲！</span>',
+      '<span class="ai-new">安排！</span>6点半<span class="ai-new">必须到位哈哈哈</span>'
+    ],
+    '好呀，不过周六下午':[
+      '好呀，不过周六下午<span class="ai-new">我可能有事，周日出发怎么样？</span>',
+      '<span class="ai-new">好的，</span>不过周六下午<span class="ai-new">我可能有安排，能否改周日出发？</span>',
+      '好呀<span class="ai-new">～</span>不过周六下午<span class="ai-new">我有点事，周日走可以不？</span>',
+      '好呀<span class="ai-new">哈哈！</span>不过周六下午<span class="ai-new">我可能有事，周日冲不？</span>',
+      '<span class="ai-new">冲！！</span>不过周六下午<span class="ai-new">有事 周日出发8不8</span>'
+    ],
+    '写完了明天发你':[
+      '写完了<span class="ai-new">，</span>明天发你',
+      '<span class="ai-new">老师您好，</span>写完了<span class="ai-new">，明天发您审阅！</span>',
+      '<span class="ai-new">嗯嗯</span>写完了<span class="ai-new">～明天给您看！</span>',
+      '<span class="ai-new">搞定了！</span>明天<span class="ai-new">交卷哈哈</span>',
+      '<span class="ai-new">写完了！！</span>明天<span class="ai-new">疯狂交作业！</span>'
+    ]
+  };
+  return (results[input]||['','','','',''])[toneIdx] || input;
+}
+
+// Chip click → fill input, replace chips with empty bar
+document.getElementById('aiBarZone').addEventListener('click',e=>{
+  if(e.target.classList.contains('quick-chip')){
+    document.getElementById('inputText').innerHTML=e.target.textContent+'<span class="cursor-blink"></span>';
+    const s=scenes[currentScene];
+    document.getElementById('aiBarZone').innerHTML=renderEmptyBar(s.tag||'纠错','更多');
+    bindMoreBtn(s);
+  }
+});
+
+// Panel card use
+document.getElementById('aiPanel').addEventListener('click',e=>{
+  if(e.target.classList.contains('card-use-btn')){
+    const text=e.target.closest('.suggestion-card').querySelector('.card-text').textContent;
+    document.getElementById('inputText').innerHTML=text+'<span class="cursor-blink"></span>';
+  }
+});
+
+// Tone pill
+document.getElementById('panelTonePill').addEventListener('click',()=>{
+  const sel=document.getElementById('toneSelector');
+  sel.classList.toggle('visible');
+  document.getElementById('panelTonePill').classList.toggle('active',sel.classList.contains('visible'));
+  if(sel.classList.contains('visible'))renderToneOptions();
+});
+
+// Settings
+document.getElementById('openSettings').onclick=()=>document.getElementById('settingsPage').classList.add('visible');
+document.getElementById('closeSettings').onclick=()=>document.getElementById('settingsPage').classList.remove('visible');
+
+// Send
+document.getElementById('sendBtn').onclick=()=>{
+  const input=document.getElementById('inputText').textContent.replace('输入消息...','').trim();
+  if(!input)return;
+  const ca=document.getElementById('chatArea');
+  ca.innerHTML+=`<div class="msg-row sent"><div class="bubble">${input}</div><div class="avatar" style="background:#ffcc80;">😸</div></div>`;
+  document.getElementById('inputText').innerHTML='<span style="color:#bbb">输入消息...</span>';
+  ca.scrollTop=ca.scrollHeight;
+};
+
+// Nav
+document.querySelectorAll('.scenario-nav button').forEach(btn=>{btn.onclick=()=>{document.querySelectorAll('.scenario-nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadScene(btn.dataset.scene);};});
+
+// Toggles
+document.querySelectorAll('.toggle').forEach(t=>{t.onclick=()=>{t.classList.toggle('on');t.classList.toggle('off');};});
+document.querySelectorAll('.mini-toggle').forEach(t=>{t.onclick=()=>{t.classList.toggle('on');t.classList.toggle('off');};});
+
+loadScene('polish');
+</script>
+</body>
+</html>
